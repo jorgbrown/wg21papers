@@ -1227,7 +1227,7 @@ Possible extra rowspan handling
       text-align: center;
     }
   </style>
-  <meta content="Bikeshed version e9290f0f6bc01459c8b7bdfa2bb91f6985fc5c67" name="generator">
+  <meta content="Bikeshed version 47cb5324cd11789aef12f220cf86d1780f94ab9c" name="generator">
   <link href="http://wg21.link/p1229r0" rel="canonical">
   <link href="https://isocpp.org/favicon.ico" rel="icon">
 <style>/* style-md-lists */
@@ -1469,6 +1469,7 @@ pre .property::before, pre .property::after {
      <ol class="toc">
       <li><a href="#sametype-params"><span class="secno">2.1</span> <span class="content">Ordering of similarly-typed parameters</span></a>
       <li><a href="#constructor-overloads"><span class="secno">2.2</span> <span class="content">Constructor overloads</span></a>
+      <li><a href="#previous-proposals"><span class="secno">2.3</span> <span class="content">Previous proposals</span></a>
      </ol>
     <li>
      <a href="#approach"><span class="secno">3</span> <span class="content">Approach</span></a>
@@ -1483,10 +1484,10 @@ pre .property::before, pre .property::after {
       <li>
        <a href="#labels_in_a_func"><span class="secno">4.1</span> <span class="content">Labels in a Function Declaration</span></a>
        <ol class="toc">
-        <li><a href="#function-call-with-sugar"><span class="secno">4.1.1</span> <span class="content">The function call  {#function-call-with-sugar}</span></a>
-        <li><a href="#param-decl-with-sugar"><span class="secno">4.1.2</span> <span class="content">Within the context of a function declaration, the parameter-declaration:  {#param-decl-with-sugar}</span></a>
-        <li><a href="#explicit-param-decl-with-sugar"><span class="secno">4.1.3</span> <span class="content">Within the context of a function declaration, the explicit parameter-declaration:  {#explicit-param-decl-with-sugar}</span></a>
-        <li><a href="#param-def-with-sugar"><span class="secno">4.1.4</span> <span class="content">Within the context of a function definition, the parameter name is actually defined within the function, to refer to the actual parameter which has a different name.  The definition line:  {#param-def-with-sugar}</span></a>
+        <li><a href="#the-function-call"><span class="secno">4.1.1</span> <span class="content">The function call</span></a>
+        <li><a href="#within-the-context-of-a-function-declaration-the-parameter-declaration"><span class="secno">4.1.2</span> <span class="content">Within the context of a function declaration, the parameter-declaration:</span></a>
+        <li><a href="#within-the-context-of-a-function-declaration-the-explicit-parameter-declaration"><span class="secno">4.1.3</span> <span class="content">Within the context of a function declaration, the explicit parameter-declaration:</span></a>
+        <li><a href="#within-the-context-of-a-function-definition-the-parameter-name"><span class="secno">4.1.4</span> <span class="content">Within the context of a function definition, the parameter name:</span></a>
        </ol>
      </ol>
     <li><a href="#how-to-today"><span class="secno">5</span> <span class="content">How close can we get today?</span></a>
@@ -1523,6 +1524,18 @@ pre .property::before, pre .property::after {
    <p>Also, such parameter comments do not survive a std::forward call, so while there may be safety in using these name comments in most function calls, the name comments would be ignored in a call to std::make_shared().</p>
    <h3 class="heading settled" data-level="2.2" id="constructor-overloads"><span class="secno">2.2. </span><span class="content">Constructor overloads</span><a class="self-link" href="#constructor-overloads"></a></h3>
    <p>The need for named parameters is most acute in situations where functions are most overloaded: constructors.  For std::pair, in fact, this was solved by adding an empty struct tag type, std::piecewise_construct_t, to select a particular overload.  Similarly, std::allocator_arg_t is used for disambiguation in the constructors for std::tuple, std::function and others.</p>
+   <h3 class="heading settled" data-level="2.3" id="previous-proposals"><span class="secno">2.3. </span><span class="content">Previous proposals</span><a class="self-link" href="#previous-proposals"></a></h3>
+   <p><a data-link-type="biblio" href="#biblio-n4172">[N4172]</a> "Named Arguments" also proposed a mechanism for naming arguments, with a function-call syntax identical to that proposed in this paper.  However:</p>
+   <ol>
+    <li data-md>
+     <p>The declaration syntax was identical to current C++, basing the parameter names callers must use on the names chosen in header files.  This has the unfortunate property of making currently-arbitrary naming choices part of the API for future callers.  This paper adopts the view that labelling parameters should be an "opt-in" choice, and should not by default apply to existing declarations.  N4172 claims that breakage due to parameter name changes would be low, because parameter names don’t change that often.  A bigger problem is that the very same API is often declared with different names, by different library vendors.  For example, memcpy’s parameters are most often declared as dest / src / n, but dst / src / n is sometimes used, as is __dst / __src / __n, and as noted above the C++ standard itself (and POSIX) uses s1 / s2 / n.</p>
+    <li data-md>
+     <p>N4172 changes the meaning and validity of existing code when the name given to parameters in the function declaration, and the function definition, don’t match.  However such mismatches are quite common and may occur in library code which a user has no control over.</p>
+    <li data-md>
+     <p>N4172 does not allow labelled parameters to be part of a variadic template function call.</p>
+    <li data-md>
+     <p>N4172 does not allow labelled parameters to be part of function-pointer syntax.</p>
+   </ol>
    <h2 class="heading settled" data-level="3" id="approach"><span class="secno">3. </span><span class="content">Approach</span><a class="self-link" href="#approach"></a></h2>
    <p>For labelled parameters, this proposal adopts the empty-struct-tag approach, with one minor change: rather than a separate parameter with the tag type, we subclass the empty tag type, and add the actual parameter as a member of the subclass.</p>
    <h3 class="heading settled" data-level="3.1" id="parameter-names-map-1-1"><span class="secno">3.1. </span><span class="content">Parameter names map 1:1 to empty classes</span><a class="self-link" href="#parameter-names-map-1-1"></a></h3>
@@ -1546,13 +1559,14 @@ pre .property::before, pre .property::after {
 <c- p>};</c->
 </pre>
    <p>This is already enough to start using labelled parameters, however the syntax is unwieldy:</p>
-<pre class="highlight"><c- b>void</c-> <c- nf>memcpy</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'t'</c-><c- p>,</c-> <c- sc>'o'</c-><c- o>></c-><c- p>,</c-> <c- b>char</c-> <c- o>*></c-><c- p>,</c->
+<pre class="highlight"><c- c1>// declaration</c->
+<c- b>void</c-> <c- nf>memcpy</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'t'</c-><c- p>,</c-> <c- sc>'o'</c-><c- o>></c-><c- p>,</c-> <c- b>char</c-> <c- o>*></c-><c- p>,</c->
             <c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'f'</c-><c- p>,</c-> <c- sc>'r'</c-><c- p>,</c-> <c- sc>'o'</c-><c- p>,</c-> <c- sc>'m'</c-><c- o>></c-><c- p>,</c-> <c- k>const</c-> <c- b>char</c-> <c- o>*></c-><c- p>,</c->
             <c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'n'</c-><c- o>></c-><c- p>,</c-> <c- b>size_t</c-><c- o>></c-><c- p>);</c->
-<c- c1>// ...</c->
-  <c- n>memcpy</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'t'</c-><c- p>,</c-> <c- sc>'o'</c-><c- o>></c-><c- p>,</c-> <c- b>char</c-> <c- o>*></c-><c- p>(</c-><c- n>buf</c-><c- p>),</c->
-         <c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'f'</c-><c- p>,</c-> <c- sc>'r'</c-><c- p>,</c-> <c- sc>'o'</c-><c- p>,</c-> <c- sc>'m'</c-><c- o>></c-><c- p>,</c-> <c- k>const</c-> <c- b>char</c-> <c- o>*></c-><c- p>(</c-><c- n>in</c-><c- p>),</c->
-         <c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'n'</c-><c- o>></c-><c- p>,</c-> <c- b>size_t</c-><c- o>></c-><c- p>(</c-><c- n>bytes</c-><c- p>));</c->
+<c- c1>// call site</c->
+<c- n>memcpy</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'t'</c-><c- p>,</c-> <c- sc>'o'</c-><c- o>></c-><c- p>,</c-> <c- b>char</c-> <c- o>*></c-><c- p>(</c-><c- n>buf</c-><c- p>),</c->
+       <c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'f'</c-><c- p>,</c-> <c- sc>'r'</c-><c- p>,</c-> <c- sc>'o'</c-><c- p>,</c-> <c- sc>'m'</c-><c- o>></c-><c- p>,</c-> <c- k>const</c-> <c- b>char</c-> <c- o>*></c-><c- p>(</c-><c- n>in</c-><c- p>),</c->
+       <c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'n'</c-><c- o>></c-><c- p>,</c-> <c- b>size_t</c-><c- o>></c-><c- p>(</c-><c- n>bytes</c-><c- p>));</c->
 </pre>
    <p>We can improve this situation by adding a custom type and an operator() to our formerly-empty label class:</p>
 <pre class="highlight"><c- k>template</c-> <c- o>&lt;</c-><c- k>typename</c-> <c- n>CharT</c-><c- p>,</c-> <c- n>CharT</c-><c- p>...</c-> <c- n>String</c-><c- o>></c->
@@ -1568,13 +1582,14 @@ pre .property::before, pre .property::after {
 <c- p>};</c->
 </pre>
    <p>And now the code is a bit more readable:</p>
-<pre class="highlight"><c- b>void</c-> <c- nf>memcpy</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'t'</c-><c- p>,</c-> <c- sc>'o'</c-><c- o>>::</c-><c- n>param</c-><c- o>&lt;</c-><c- b>char</c-> <c- o>*></c-><c- p>,</c->
+<pre class="highlight"><c- c1>// declaration</c->
+<c- b>void</c-> <c- nf>memcpy</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'t'</c-><c- p>,</c-> <c- sc>'o'</c-><c- o>>::</c-><c- n>param</c-><c- o>&lt;</c-><c- b>char</c-> <c- o>*></c-><c- p>,</c->
             <c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'f'</c-><c- p>,</c-> <c- sc>'r'</c-><c- p>,</c-> <c- sc>'o'</c-><c- p>,</c-> <c- sc>'m'</c-><c- o>>::</c-><c- n>param</c-><c- o>&lt;</c-><c- k>const</c-> <c- b>char</c-> <c- o>*></c-><c- p>,</c->
             <c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'n'</c-><c- o>>::</c-><c- n>param</c-><c- o>&lt;</c-><c- b>size_t</c-><c- o>></c-><c- p>);</c->
-<c- c1>// ...</c->
-  <c- n>memcpy</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'t'</c-><c- p>,</c-> <c- sc>'o'</c-><c- o>></c-><c- p>()(</c-><c- n>buf</c-><c- p>),</c->
-         <c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'f'</c-><c- p>,</c-> <c- sc>'r'</c-><c- p>,</c-> <c- sc>'o'</c-><c- p>,</c-> <c- sc>'m'</c-><c- o>></c-><c- p>()(</c-><c- n>in</c-><c- p>),</c->
-         <c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'n'</c-><c- o>></c-><c- p>()(</c-><c- n>bytes</c-><c- p>));</c->
+<c- c1>// call site</c->
+<c- n>memcpy</c-><c- p>(</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'t'</c-><c- p>,</c-> <c- sc>'o'</c-><c- o>></c-><c- p>()(</c-><c- n>buf</c-><c- p>),</c->
+       <c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'f'</c-><c- p>,</c-> <c- sc>'r'</c-><c- p>,</c-> <c- sc>'o'</c-><c- p>,</c-> <c- sc>'m'</c-><c- o>></c-><c- p>()(</c-><c- n>in</c-><c- p>),</c->
+       <c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'n'</c-><c- o>></c-><c- p>()(</c-><c- n>bytes</c-><c- p>));</c->
 </pre>
    <h3 class="heading settled" data-level="3.3" id="explicit-labelled-parameters"><span class="secno">3.3. </span><span class="content">One more thing - explicit labelled parameters</span><a class="self-link" href="#explicit-labelled-parameters"></a></h3>
     In some cases, the automatic conversion of a non-labelled parameter to a labelled function argument type may be undesirable.  For example, in adding an overload to an existing function that accepts a pointer, if the new overload accepts an integer, then any call with the parameter 0 as an argument becomes ambiguous.  But if the new overload uses an explicitly labelled parameter, then there will be no ambiguity.  The new class is even simpler: 
@@ -1590,19 +1605,21 @@ pre .property::before, pre .property::after {
    <h2 class="heading settled" data-level="4" id="syntactic-sugar"><span class="secno">4. </span><span class="content">Syntactic Sugar</span><a class="self-link" href="#syntactic-sugar"></a></h2>
    <p>While functional, the technique we have described thus far is ugly enough that most programmers would not use it.  With language support it becomes much cleaner.</p>
    <h3 class="heading settled" data-level="4.1" id="labels_in_a_func"><span class="secno">4.1. </span><span class="content">Labels in a Function Declaration</span><a class="self-link" href="#labels_in_a_func"></a></h3>
-   <h4 class="heading settled" data-level="4.1.1" id="function-call-with-sugar"><span class="secno">4.1.1. </span><span class="content">The function call  {#function-call-with-sugar}</span><a class="self-link" href="#function-call-with-sugar"></a></h4>
+   <h4 class="heading settled" data-level="4.1.1" id="the-function-call"><span class="secno">4.1.1. </span><span class="content">The function call</span><a class="self-link" href="#the-function-call"></a></h4>
    <p><code class="highlight"><c- n>function</c-><c- o>-</c-><c- n>name</c-><c- p>(</c-> <c- nl>labelname</c-> <c- p>:</c-> <c- n>expression</c-> <c- p>)</c-></code></p>
    <p>is syntactically equivalent to</p>
    <p><code class="highlight"><c- n>function</c-><c- o>-</c-><c- n>name</c-><c- p>(</c-> <c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'l'</c-><c- p>,</c-> <c- sc>'a'</c-><c- p>,</c-> <c- sc>'b'</c-><c- p>,</c-> <c- sc>'e'</c-><c- p>,</c-> <c- sc>'l'</c-><c- p>,</c-> <c- sc>'n'</c-><c- p>,</c-> <c- sc>'a'</c-><c- p>,</c-> <c- sc>'m'</c-><c- p>,</c-> <c- sc>'e'</c-><c- o>></c-><c- p>()(</c-><c- n>expression</c-><c- p>)</c-> <c- p>)</c-></code></p>
-   <h4 class="heading settled" data-level="4.1.2" id="param-decl-with-sugar"><span class="secno">4.1.2. </span><span class="content">Within the context of a function declaration, the parameter-declaration:  {#param-decl-with-sugar}</span><a class="self-link" href="#param-decl-with-sugar"></a></h4>
+   <h4 class="heading settled" data-level="4.1.2" id="within-the-context-of-a-function-declaration-the-parameter-declaration"><span class="secno">4.1.2. </span><span class="content">Within the context of a function declaration, the parameter-declaration:</span><a class="self-link" href="#within-the-context-of-a-function-declaration-the-parameter-declaration"></a></h4>
    <p><code class="highlight"><c- nl>labelname</c-> <c- p>:</c-> <c- n>attribute</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-><c- o>-</c-><c- n>opt</c-> <c- n>decl</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-> <c- n>declarator</c-> <c- o>=</c-> <c- n>initializer</c-><c- o>-</c-><c- n>clause</c-></code></p>
    <p>is syntactically equivalent to</p>
    <p><code class="highlight"><c- n>attribute</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-><c- o>-</c-><c- n>opt</c-> <c- n>std</c-><c- o>::</c-><c- n>labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'l'</c-><c- p>,</c-> <c- sc>'a'</c-><c- p>,</c-> <c- sc>'b'</c-><c- p>,</c-> <c- sc>'e'</c-><c- p>,</c-> <c- sc>'l'</c-><c- p>,</c-> <c- sc>'n'</c-><c- p>,</c-> <c- sc>'a'</c-><c- p>,</c-> <c- sc>'m'</c-><c- p>,</c-> <c- sc>'e'</c-><c- o>></c-><c- p>,</c-> <c- n>decl</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-><c- o>></c-> <c- n>declarator</c-> <c- o>=</c-> <c- n>initializer</c-><c- o>-</c-><c- n>clause</c-></code></p>
-   <h4 class="heading settled" data-level="4.1.3" id="explicit-param-decl-with-sugar"><span class="secno">4.1.3. </span><span class="content">Within the context of a function declaration, the explicit parameter-declaration:  {#explicit-param-decl-with-sugar}</span><a class="self-link" href="#explicit-param-decl-with-sugar"></a></h4>
+   <h4 class="heading settled" data-level="4.1.3" id="within-the-context-of-a-function-declaration-the-explicit-parameter-declaration"><span class="secno">4.1.3. </span><span class="content">Within the context of a function declaration, the explicit parameter-declaration:</span><a class="self-link" href="#within-the-context-of-a-function-declaration-the-explicit-parameter-declaration"></a></h4>
    <p><code class="highlight"><c- k>explicit</c-> <c- nl>labelname</c-> <c- p>:</c-> <c- n>attribute</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-><c- o>-</c-><c- n>opt</c-> <c- n>decl</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-> <c- n>declarator</c-> <c- o>=</c-> <c- n>initializer</c-><c- o>-</c-><c- n>clause</c-></code></p>
    <p>is syntactically equivalent to</p>
    <p><code class="highlight"><c- n>attribute</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-><c- o>-</c-><c- n>opt</c-> <c- n>std</c-><c- o>::</c-><c- n>explicit_labelled</c-><c- o>&lt;</c-><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- o>&lt;</c-><c- b>char</c-><c- p>,</c-> <c- sc>'l'</c-><c- p>,</c-> <c- sc>'a'</c-><c- p>,</c-> <c- sc>'b'</c-><c- p>,</c-> <c- sc>'e'</c-><c- p>,</c-> <c- sc>'l'</c-><c- p>,</c-> <c- sc>'n'</c-><c- p>,</c-> <c- sc>'a'</c-><c- p>,</c-> <c- sc>'m'</c-><c- p>,</c-> <c- sc>'e'</c-><c- o>></c-><c- p>,</c-> <c- n>decl</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-><c- o>></c-> <c- n>declarator</c-> <c- o>=</c-> <c- n>initializer</c-><c- o>-</c-><c- n>clause</c-></code></p>
-   <h4 class="heading settled" data-level="4.1.4" id="param-def-with-sugar"><span class="secno">4.1.4. </span><span class="content">Within the context of a function definition, the parameter name is actually defined within the function, to refer to the actual parameter which has a different name.  The definition line:  {#param-def-with-sugar}</span><a class="self-link" href="#param-def-with-sugar"></a></h4>
+   <h4 class="heading settled" data-level="4.1.4" id="within-the-context-of-a-function-definition-the-parameter-name"><span class="secno">4.1.4. </span><span class="content">Within the context of a function definition, the parameter name:</span><a class="self-link" href="#within-the-context-of-a-function-definition-the-parameter-name"></a></h4>
+   <p>actually refers to the "value" field of the std::labelled struct.</p>
+   <p>This works as though the parameter had actually had a different name, and then within the function, the parameter was defined to refer to the value field.  So the definition line:</p>
    <p><code class="highlight"><c- n>function</c-><c- o>-</c-><c- n>name</c-><c- p>(</c-><c- nl>labelname</c-> <c- p>:</c-> <c- n>attribute</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-><c- o>-</c-><c- n>opt</c-> <c- n>decl</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-> <c- n>declarator</c-><c- p>)</c-> <c- p>{</c-></code></p>
    <p>becomes:</p>
 <pre class="highlight"><c- n>function</c-><c- o>-</c-><c- n>name</c-><c- p>(</c-><c- nl>labelname</c-> <c- p>:</c-> <c- n>attribute</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-><c- o>-</c-><c- n>opt</c-> <c- n>decl</c-><c- o>-</c-><c- n>specifier</c-><c- o>-</c-><c- n>seq</c-> <c- n>__declarator</c-><c- p>)</c-> <c- p>{</c->
@@ -1610,16 +1627,10 @@ pre .property::before, pre .property::after {
 </pre>
    <p>where __declarator is an implementation-defined renaming of "declarator".</p>
    <p>With this sugar, the memcpy-with-labels declaration and call becomes quite clean, even familiar to users of languages such as C# with similar syntax:</p>
-<pre class="highlight"><c- b>void</c-> <c- nf>memcpy</c-><c- p>(</c-><c- nl>to</c-><c- p>:</c-> <c- b>char</c-> <c- o>*</c-><c- p>,</c-> <c- nl>from</c-><c- p>:</c-> <c- k>const</c-> <c- b>char</c-> <c- o>*</c-><c- p>,</c-> <c- nl>n</c-><c- p>:</c-> <c- b>size_t</c-><c- p>);</c->
-
-<c- c1>// ...</c->
-
-<c- b>void</c-> <c- nf>Process</c-><c- p>(</c-><c- b>char</c-> <c- o>*</c-><c- n>in</c-><c- p>,</c-> <c- b>size_t</c-> <c- n>bytes</c-><c- p>)</c-> <c- p>{</c->
-  <c- b>char</c-> <c- o>*</c-><c- n>buf</c-> <c- o>=</c-> <c- k>new</c-> <c- b>char</c-><c- p>[</c-><c- n>bytes</c-> <c- o>+</c-> <c- mi>1</c-><c- p>];</c->
-  <c- n>memcpy</c-><c- p>(</c-><c- nl>to</c-><c- p>:</c-> <c- n>buf</c-><c- p>,</c-> <c- nl>from</c-><c- p>:</c-> <c- n>in</c-><c- p>,</c-> <c- nl>n</c-><c- p>:</c-> <c- n>bytes</c-><c- p>);</c->
-  <c- n>buf</c-><c- p>[</c-><c- n>bytes</c-><c- p>]</c-> <c- o>=</c-> <c- sc>'\0'</c-><c- p>;</c->
-  <c- n>ProcessCString</c-><c- p>(</c-><c- n>buf</c-><c- p>);</c->
-<c- p>}</c->
+<pre class="highlight"><c- c1>// declaration</c->
+<c- b>void</c-> <c- nf>memcpy</c-><c- p>(</c-><c- nl>to</c-><c- p>:</c-> <c- b>char</c-> <c- o>*</c-><c- p>,</c-> <c- nl>from</c-><c- p>:</c-> <c- k>const</c-> <c- b>char</c-> <c- o>*</c-><c- p>,</c-> <c- nl>n</c-><c- p>:</c-> <c- b>size_t</c-><c- p>);</c->
+<c- c1>// call site</c->
+<c- n>memcpy</c-><c- p>(</c-><c- nl>to</c-><c- p>:</c-> <c- n>buf</c-><c- p>,</c-> <c- nl>from</c-><c- p>:</c-> <c- n>in</c-><c- p>,</c-> <c- nl>n</c-><c- p>:</c-> <c- n>bytes</c-><c- p>);</c->
 </pre>
    <h2 class="heading settled" data-level="5" id="how-to-today"><span class="secno">5. </span><span class="content">How close can we get today?</span><a class="self-link" href="#how-to-today"></a></h2>
    <p>We can use the <code class="highlight"><c- n>std</c-><c- o>::</c-><c- n>label</c-><c- p>(</c-><c- b>char</c-><c- p>,</c-> <c- sc>'l'</c-><c- p>,</c-> <c- sc>'a'</c-><c- p>,</c-> <c- sc>'b'</c-><c- p>,</c-> <c- sc>'e'</c-><c- p>,</c-> <c- sc>'l'</c-><c- p>)</c-></code> syntax today, to answer various questions about how this proposal works... but that gets a bit unwieldy.  Fortunately we can do a little better: <a data-link-type="biblio" href="#biblio-n3599">[N3599]</a>, "Literal operator templates for strings" provides a convenient mechanism currently implemented in both gcc and clang (though not officially part of C++).</p>
@@ -1641,7 +1652,7 @@ pre .property::before, pre .property::after {
   <c- n>ProcessCString</c-><c- p>(</c-><c- n>buf</c-><c- p>);</c->
 <c- p>}</c->
 </pre>
-   <p>One can see these in practice at <a href="https://gcc.godbolt.org/z/QfIkhO">godbolt QfIkhO</a></p>
+   <p>One can see these in practice at <a href="https://gcc.godbolt.org/z/QfIkhO">godbolt QfIkhO</a> , which also serves to answer many questions regarding parameter matching, overload resolution, use within lambdas, std::forward propagation, etc.</p>
    <h2 class="heading settled" data-level="6" id="acknowledgements"><span class="secno">6. </span><span class="content">Acknowledgements</span><a class="self-link" href="#acknowledgements"></a></h2>
    <p>Thanks to Richard Smith for pointing me at N3599, and providing various other insights.
 Thanks to Matthew Godbolt whose Compiler Explorer sped up the development of this proposal significantly.</p>
@@ -1780,6 +1791,8 @@ Thanks to Matthew Godbolt whose Compiler Explorer sped up the development of thi
   <dl>
    <dt id="biblio-n3599">[N3599]
    <dd>Richard Smith. <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3599.html">Literal operator templates for strings</a>. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3599.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3599.html</a>
+   <dt id="biblio-n4172">[N4172]
+   <dd>Ehsan Akhgari; Botond Ballo. <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4172.htm">Named arguments</a>. URL: <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4172.htm">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4172.htm</a>
    <dt id="biblio-p1229r0">[P1229R0]
    <dd>Jorg Brown. <a href="http://wg21.link/p1229r0">Labelled Parameters</a>. URL: <a href="http://wg21.link/p1229r0">http://wg21.link/p1229r0</a>
   </dl>

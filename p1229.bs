@@ -59,6 +59,19 @@ Constructor overloads  {#constructor-overloads}
 
 The need for named parameters is most acute in situations where functions are most overloaded: constructors.  For std::pair, in fact, this was solved by adding an empty struct tag type, std::piecewise_construct_t, to select a particular overload.  Similarly, std::allocator_arg_t is used for disambiguation in the constructors for std::tuple, std::function and others.
 
+Previous proposals  {#previous-proposals}
+------------------
+
+[[N4172]] "Named Arguments" also proposed a mechanism for naming arguments, with a function-call syntax identical to that proposed in this paper.  However:
+
+1. The declaration syntax was identical to current C++, basing the parameter names callers must use on the names chosen in header files.  This has the unfortunate property of making currently-arbitrary naming choices part of the API for future callers.  This paper adopts the view that labelling parameters should be an "opt-in" choice, and should not by default apply to existing declarations.  N4172 claims that breakage due to parameter name changes would be low, because parameter names don't change that often.  A bigger problem is that the very same API is often declared with different names, by different library vendors.  For example, memcpy's parameters are most often declared as dest / src / n, but dst / src / n is sometimes used, as is __dst / __src / __n, and as noted above the C++ standard itself (and POSIX) uses s1 / s2 / n.
+
+2. N4172 changes the meaning and validity of existing code when the name given to parameters in the function declaration, and the function definition, don't match.  However such mismatches are quite common and may occur in library code which a user has no control over.
+
+3. N4172 does not allow labelled parameters to be part of a variadic template function call.
+
+4. N4172 does not allow labelled parameters to be part of function-pointer syntax.
+
 Approach  {#approach}
 ========
 
@@ -98,13 +111,14 @@ struct labelled : public Label {
 This is already enough to start using labelled parameters, however the syntax is unwieldy:
 
 ```
+// declaration
 void memcpy(std::labelled<std::label<char, 't', 'o'>, char *>,
             std::labelled<std::label<char, 'f', 'r', 'o', 'm'>, const char *>,
             std::labelled<std::label<char, 'n'>, size_t>);
-// ...
-  memcpy(std::labelled<std::label<char, 't', 'o'>, char *>(buf),
-         std::labelled<std::label<char, 'f', 'r', 'o', 'm'>, const char *>(in),
-         std::labelled<std::label<char, 'n'>, size_t>(bytes));
+// call site
+memcpy(std::labelled<std::label<char, 't', 'o'>, char *>(buf),
+       std::labelled<std::label<char, 'f', 'r', 'o', 'm'>, const char *>(in),
+       std::labelled<std::label<char, 'n'>, size_t>(bytes));
 ```
 
 We can improve this situation by adding a custom type and an operator() to our formerly-empty label class:
@@ -126,13 +140,14 @@ class label {
 And now the code is a bit more readable:
 
 ```
+// declaration
 void memcpy(std::label<char, 't', 'o'>::param<char *>,
             std::label<char, 'f', 'r', 'o', 'm'>::param<const char *>,
             std::label<char, 'n'>::param<size_t>);
-// ...
-  memcpy(std::label<char, 't', 'o'>()(buf),
-         std::label<char, 'f', 'r', 'o', 'm'>()(in),
-         std::label<char, 'n'>()(bytes));
+// call site
+memcpy(std::label<char, 't', 'o'>()(buf),
+       std::label<char, 'f', 'r', 'o', 'm'>()(in),
+       std::label<char, 'n'>()(bytes));
 ```
 
 One more thing - explicit labelled parameters  {#explicit-labelled-parameters}
@@ -158,7 +173,7 @@ While functional, the technique we have described thus far is ugly enough that m
 Labels in a Function Declaration {#labels_in_a_func}
 --------------------------------
 
-### The function call  {#function-call-with-sugar}
+### The function call
 
 `function-name( labelname : expression )`
 
@@ -166,7 +181,7 @@ is syntactically equivalent to
 
 `function-name( std::label<char, 'l', 'a', 'b', 'e', 'l', 'n', 'a', 'm', 'e'>()(expression) )`
 
-### Within the context of a function declaration, the parameter-declaration:  {#param-decl-with-sugar}
+### Within the context of a function declaration, the parameter-declaration:
 
 `labelname : attribute-specifier-seq-opt decl-specifier-seq declarator = initializer-clause`
 
@@ -174,7 +189,7 @@ is syntactically equivalent to
 
 `attribute-specifier-seq-opt std::labelled<std::label<char, 'l', 'a', 'b', 'e', 'l', 'n', 'a', 'm', 'e'>, decl-specifier-seq> declarator = initializer-clause`
 
-### Within the context of a function declaration, the explicit parameter-declaration:  {#explicit-param-decl-with-sugar}
+### Within the context of a function declaration, the explicit parameter-declaration:
 
 `explicit labelname : attribute-specifier-seq-opt decl-specifier-seq declarator = initializer-clause`
 
@@ -182,7 +197,11 @@ is syntactically equivalent to
 
 `attribute-specifier-seq-opt std::explicit_labelled<std::label<char, 'l', 'a', 'b', 'e', 'l', 'n', 'a', 'm', 'e'>, decl-specifier-seq> declarator = initializer-clause`
 
-### Within the context of a function definition, the parameter name is actually defined within the function, to refer to the actual parameter which has a different name.  The definition line:  {#param-def-with-sugar}
+### Within the context of a function definition, the parameter name:
+
+actually refers to the "value" field of the std::labelled struct.
+
+This works as though the parameter had actually had a different name, and then within the function, the parameter was defined to refer to the value field.  So the definition line:
 
 `function-name(labelname : attribute-specifier-seq-opt decl-specifier-seq declarator) {`
 
@@ -198,16 +217,10 @@ where __declarator is an implementation-defined renaming of "declarator".
 With this sugar, the memcpy-with-labels declaration and call becomes quite clean, even familiar to users of languages such as C# with similar syntax:
 
 ```
+// declaration
 void memcpy(to: char *, from: const char *, n: size_t);
-
-// ...
-
-void Process(char *in, size_t bytes) {
-  char *buf = new char[bytes + 1];
-  memcpy(to: buf, from: in, n: bytes);
-  buf[bytes] = '\0';
-  ProcessCString(buf);
-}
+// call site
+memcpy(to: buf, from: in, n: bytes);
 ```
 
 How close can we get today?  {#how-to-today}
@@ -238,7 +251,7 @@ void Process(char *in, size_t bytes) {
 }
 ```
 
-One can see these in practice at [godbolt QfIkhO](https://gcc.godbolt.org/z/QfIkhO)
+One can see these in practice at [godbolt QfIkhO](https://gcc.godbolt.org/z/QfIkhO) , which also serves to answer many questions regarding parameter matching, overload resolution, use within lambdas, std::forward propagation, etc.
 
 Acknowledgements  {#acknowledgements}
 ================
@@ -252,6 +265,16 @@ Thanks to Matthew Godbolt whose Compiler Explorer sped up the development of thi
   "authors": ["Jorg Brown"],
   "href": "http://wg21.link/p1229r0",
   "title": "Labelled Parameters",
+  "publisher": "WG21"
+ }
+}
+</pre>
+<pre class=biblio>
+{
+ "N4172": {
+  "authors": ["Ehsan Akhgari", "Botond Ballo"],
+  "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4172.htm",
+  "title": "Named arguments",
   "publisher": "WG21"
  }
 }
