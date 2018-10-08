@@ -1,0 +1,268 @@
+<pre class='metadata'>
+Title: Labelled Parameters
+Shortname: p1229
+Revision: 0
+Date: 2018-10-08
+Editor: Jorg Brown, Google, jorg.brown@gmail.com
+Abstract: This paper proposes a method for giving names to function parameters, compatible with std::forward'ing and without impact on existing code.
+
+Status: P
+Audience: EWG
+Group: WG21
+URL: http://wg21.link/p1229r0
+Markup Shorthands: markdown yes
+</pre>
+
+Change history  {#change-history}
+==============
+
+This is the initial version, [[P1229R0]]
+
+Motivating examples and previous attempts  {#motivating-examples}
+=========================================
+
+Ordering of similarly-typed parameters {#sametype-params}
+--------------------------------------
+
+Consider the following code:
+
+```
+void Process(char *in, size_t bytes) {
+  char *buf = new char[bytes + 1];
+  std::memcpy(in, buf, bytes);
+  buf[bytes] = '\0';
+  ProcessCString(buf);
+}
+```
+
+Due to its author's previous use of std::copy_n, where the source is the first parameter, the author here has also placed the input as the first parameter, not realizing that memcpy's arguments aren't in that order.  Furthermore since the author has neglected to const-qualify the routine's "in" parameter, the mistake is not caught at compile time.
+
+In other languages, such as python and Kotlin, parameters can be named, which allows for compile-time detection of errors.  However their syntax conflicts with existing meaning since = can be used in any C++ expression:
+
+```
+  std::memcpy(dst=buf, src=in, n=bytes);  // three assignments and a function call.
+```
+
+Clang-tidy, among others, allows for inline documentation of parameter names, and will generate warnings if the documentation does not match the parameter names used in the routine's declaration.
+
+```
+  std::memcpy(/* src= */ buf, /* dst= */ in, /* n= */ bytes);  // Clang-tidy warning!
+  std::memcpy(/* s1=  */ buf, /* s2=  */ in, /* n= */ bytes);  // No problem.
+```
+
+However the standard does not specify what the header file must use for parameter names, so this results in code that may not be compatible with all library implementations.  Choices made in existing APIs are sometimes unfortunate; C++17 has chosen "s1", "s2", and "n" as the parameter names for memcpy, which is why clang-tidy sees no problem with the second line above.
+
+Also, such parameter comments do not survive a std::forward call, so while there may be safety in using these name comments in most function calls, the name comments would be ignored in a call to std::make_shared().
+
+Constructor overloads  {#constructor-overloads}
+---------------------
+
+The need for named parameters is most acute in situations where functions are most overloaded: constructors.  For std::pair, in fact, this was solved by adding an empty struct tag type, std::piecewise_construct_t, to select a particular overload.  Similarly, std::allocator_arg_t is used for disambiguation in the constructors for std::tuple, std::function and others.
+
+Approach  {#approach}
+========
+
+For labelled parameters, this proposal adopts the empty-struct-tag approach, with one minor change: rather than a separate parameter with the tag type, we subclass the empty tag type, and add the actual parameter as a member of the subclass.
+
+Parameter names map 1:1 to empty classes  {#parameter-names-map-1-1}
+----------------------------------------
+
+The language feature needed most by this proposal is a way to define a new type on the fly when a function is declared with a labelled parameter.  Ideally there would be a way to pass a literal string as a template parameter; then we could write std::label<"from"> to denote that type.  Instead, we accomplish that with individual template arguments:
+
+```
+template <typename CharT, CharT... String> class label;
+```
+
+Now we can write `std::label<char, 'f', 'r', 'o', 'm'>` to get a unique type name for purposes of forming a unique argument type.
+
+Labelled parameters derive from those empty classes  {#labelled-parameters-derive}
+---------------------------------------------------
+
+To support optional use, a labelled parameter should be implicitly constructible from its unlabelled type; it must also be constructible from a labelled parameter whose type does not exactly match.  So it looks like this:
+
+```
+template <typename Label, typename T>
+struct labelled : public Label {
+  T value;
+
+  template <typename U, typename = typename std::enable_if<
+                            std::is_convertible<U&&, T>::value>::type>
+  constexpr labelled(U&& u) : value(std::forward<U>(u)) {}
+
+  template <typename U>
+  constexpr labelled(labelled<Label, U>&& ref)
+      : value(std::forward<decltype(ref.value)>(ref.value)) {}
+};
+```
+
+This is already enough to start using labelled parameters, however the syntax is unwieldy:
+
+```
+void memcpy(std::labelled<std::label<char, 't', 'o'>, char *>,
+            std::labelled<std::label<char, 'f', 'r', 'o', 'm'>, const char *>,
+            std::labelled<std::label<char, 'n'>, size_t>);
+// ...
+  memcpy(std::labelled<std::label<char, 't', 'o'>, char *>(buf),
+         std::labelled<std::label<char, 'f', 'r', 'o', 'm'>, const char *>(in),
+         std::labelled<std::label<char, 'n'>, size_t>(bytes));
+```
+
+We can improve this situation by adding a custom type and an operator() to our formerly-empty label class:
+
+```
+template <typename CharT, CharT... String>
+class label {
+ public:
+  template <typename T>
+  using param = labelled<label, T>;
+
+  template <typename T>
+  constexpr labelled<label, T> operator()(T&& t) const {
+    return {std::forward<T>(t)};
+  }
+};
+```
+
+And now the code is a bit more readable:
+
+```
+void memcpy(std::label<char, 't', 'o'>::param<char *>,
+            std::label<char, 'f', 'r', 'o', 'm'>::param<const char *>,
+            std::label<char, 'n'>::param<size_t>);
+// ...
+  memcpy(std::label<char, 't', 'o'>()(buf),
+         std::label<char, 'f', 'r', 'o', 'm'>()(in),
+         std::label<char, 'n'>()(bytes));
+```
+
+One more thing - explicit labelled parameters  {#explicit-labelled-parameters}
+---------------------------------------------
+In some cases, the automatic conversion of a non-labelled parameter to a labelled function argument type may be undesirable.  For example, in adding an overload to an existing function that accepts a pointer, if the new overload accepts an integer, then any call with the parameter 0 as an argument becomes ambiguous.  But if the new overload uses an explicitly labelled parameter, then there will be no ambiguity.  The new class is even simpler:
+
+```
+template <typename Label, typename T>
+struct explicit_labelled : public Label {
+  T value;
+
+  template <typename U>
+  constexpr explicit_labelled(labelled<Label, U>&& ref)
+      : value(std::forward<decltype(ref.value)>(ref.value)) {}
+};
+```
+
+Syntactic Sugar  {#syntactic-sugar}
+===============
+
+While functional, the technique we have described thus far is ugly enough that most programmers would not use it.  With language support it becomes much cleaner.
+
+Labels in a Function Declaration {#labels_in_a_func}
+--------------------------------
+
+### The function call  {#function-call-with-sugar}
+
+`function-name( labelname : expression )`
+
+is syntactically equivalent to
+
+`function-name( std::label<char, 'l', 'a', 'b', 'e', 'l', 'n', 'a', 'm', 'e'>()(expression) )`
+
+### Within the context of a function declaration, the parameter-declaration:  {#param-decl-with-sugar}
+
+`labelname : attribute-specifier-seq-opt decl-specifier-seq declarator = initializer-clause`
+
+is syntactically equivalent to
+
+`attribute-specifier-seq-opt std::labelled<std::label<char, 'l', 'a', 'b', 'e', 'l', 'n', 'a', 'm', 'e'>, decl-specifier-seq> declarator = initializer-clause`
+
+### Within the context of a function declaration, the explicit parameter-declaration:  {#explicit-param-decl-with-sugar}
+
+`explicit labelname : attribute-specifier-seq-opt decl-specifier-seq declarator = initializer-clause`
+
+is syntactically equivalent to
+
+`attribute-specifier-seq-opt std::explicit_labelled<std::label<char, 'l', 'a', 'b', 'e', 'l', 'n', 'a', 'm', 'e'>, decl-specifier-seq> declarator = initializer-clause`
+
+### Within the context of a function definition, the parameter name is actually defined within the function, to refer to the actual parameter which has a different name.  The definition line:  {#param-def-with-sugar}
+
+`function-name(labelname : attribute-specifier-seq-opt decl-specifier-seq declarator) {`
+
+becomes:
+
+```
+function-name(labelname : attribute-specifier-seq-opt decl-specifier-seq __declarator) {
+  auto &&declarator = __declarator.value;
+```
+
+where __declarator is an implementation-defined renaming of "declarator".
+
+With this sugar, the memcpy-with-labels declaration and call becomes quite clean, even familiar to users of languages such as C# with similar syntax:
+
+```
+void memcpy(to: char *, from: const char *, n: size_t);
+
+// ...
+
+void Process(char *in, size_t bytes) {
+  char *buf = new char[bytes + 1];
+  memcpy(to: buf, from: in, n: bytes);
+  buf[bytes] = '\0';
+  ProcessCString(buf);
+}
+```
+
+How close can we get today?  {#how-to-today}
+===========================
+
+We can use the `std::label(char, 'l', 'a', 'b', 'e', 'l')` syntax today, to answer various questions about how this proposal works... but that gets a bit unwieldy.  Fortunately we can do a little better: [[N3599]], "Literal operator templates for strings" provides a convenient mechanism currently implemented in both gcc and clang (though not officially part of C++).
+
+```
+template <typename CharT, CharT... String>
+constexpr std::label<CharT, String...> operator""_label() {
+  return {};
+}
+```
+
+Now we can write `decltype("from"_label)` to get the unique type name we need; the memcpy example becomes much more reasonable:
+
+```
+void memcpy(decltype("to"_label)::param<char *>,
+            decltype("from"_label)::param<const char *>,
+            decltype("n"_label)::param<size_t>);
+// ...
+
+void Process(char *in, size_t bytes) {
+  char *buf = new char[bytes + 1];
+  memcpy("to"_label(buf), "from"_label(in), "n"_label(bytes));
+  buf[bytes] = '\0';
+  ProcessCString(buf);
+}
+```
+
+One can see these in practice at [godbolt QfIkhO](https://gcc.godbolt.org/z/QfIkhO)
+
+Acknowledgements  {#acknowledgements}
+================
+
+Thanks to Richard Smith for pointing me at N3599, and providing various other insights.
+Thanks to Matthew Godbolt whose Compiler Explorer sped up the development of this proposal significantly.
+
+<pre class=biblio>
+{
+ "P1229R0": {
+  "authors": ["Jorg Brown"],
+  "href": "http://wg21.link/p1229r0",
+  "title": "Labelled Parameters",
+  "publisher": "WG21"
+ }
+}
+</pre>
+<pre class=biblio>
+{
+ "N3599": {
+  "authors": ["Richard Smith"],
+  "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3599.html",
+  "title": "Literal operator templates for strings",
+  "publisher": "WG21"
+ }
+}
+</pre>
