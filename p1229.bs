@@ -16,7 +16,11 @@ Markup Shorthands: markdown yes
 Change history  {#change-history}
 ==============
 
-This is the initial version, [[P1229R0]]
+This is the second version, [[P1229R1]]
+
+Minor edits and extra references have been added.
+
+The first version was [[P1229R0]]
 
 Motivating examples and previous attempts  {#motivating-examples}
 =========================================
@@ -71,6 +75,12 @@ Previous proposals  {#previous-proposals}
 3. N4172 does not allow labelled parameters to be part of a variadic template function call.
 
 4. N4172 does not allow labelled parameters to be part of function-pointer syntax.
+
+[[N4172Discuss]] captures the discussion of the paper at Urbana-Champaign in 2014.
+
+[[P0671R0]] "Parametric Functions" proposed a mechanism for naming arguments, where an extra "!" was used in the declaration to indicate that the names chosen for the parameters were intended to be part of the API, addressing objections 1 and 2 above.  See [[P0671R0Discuss]] for other concerns raised.
+
+[[P0671R2]] "Self-explanatory Function Arguments" is the latest revision of that paper, which removes the "!" syntax in the declaration, and specifies that the caller's argument name/label is ignored as far as the standard is concerned; this leaves it up to the implementation to warn on mismatch.
 
 Approach  {#approach}
 ========
@@ -271,10 +281,60 @@ Thanks to Matthew Godbolt whose Compiler Explorer sped up the development of thi
 </pre>
 <pre class=biblio>
 {
+ "P1229R1": {
+  "authors": ["Jorg Brown"],
+  "href": "http://wg21.link/p1229r1",
+  "title": "Labelled Parameters",
+  "publisher": "WG21"
+ }
+}
+</pre>
+<pre class=biblio>
+{
  "N4172": {
-  "authors": ["Ehsan Akhgari", "Botond Ballo"],
+  "authors": ["Botond Ballo"],
   "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4172.htm",
   "title": "Named arguments",
+  "publisher": "WG21"
+ }
+}
+</pre>
+<pre class=biblio>
+{
+ "N4172Discuss": {
+  "authors": ["Axel Naumann"],
+  "href": "http://wiki.edg.com/bin/view/Wg21urbana-champaign/FunctionFacilities#N4172_Named_Function_Arguments",
+  "title": "Named arguments feedback",
+  "publisher": "WG21"
+ }
+}
+</pre>
+<pre class=biblio>
+{
+ "P0671R0": {
+  "authors": ["Axel Naumann"],
+  "href": "http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0671r0.html",
+  "title": "Parametric Functions",
+  "publisher": "WG21"
+ }
+}
+</pre>
+<pre class=biblio>
+{
+ "P0671R0Discuss": {
+  "authors": ["Axel Naumann"],
+  "href": "http://wiki.edg.com/bin/view/Wg21toronto2017/P0671R0",
+  "title": "Parametric Functions Discussion",
+  "publisher": "WG21"
+ }
+}
+</pre>
+<pre class=biblio>
+{
+ "P0671R2": {
+  "authors": ["Axel Naumann"],
+  "href": "http://open-std.org/JTC1/SC22/WG21/docs/papers/2018/p0671r2.html",
+  "title": "Self-explanatory Function Arguments",
   "publisher": "WG21"
  }
 }
