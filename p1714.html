@@ -26,7 +26,16 @@ Document D1714R1
 <h2>Revision history</h2>
 
 <ul>
-  <li>2019-06-18: R1: Proposal to allow float, double, and long double template parameters.</li>
+  <li>2019-06-18: R0: Proposal to allow float, double, and long double template parameters.</li>
+  <li>2019-07-19: R1: Proposal to allow float, double, and long double template parameters.
+    <ul>
+      <li>Rather than modify paragraph 7 of 13.1 [temp.param], it is deleted entirely.</li>
+      <li>Support for floating point is specifically specified in paragraph 4 instead.</li>
+      <li>Section 13.5 Type equivalence [temp.type] is updated for floating-point since operator== will not work.</li>
+      <li>__cpp_nontype_template_paramater_class is suggested as the feature test macro to use.</li>
+      <li>Minor commentary updates and typo fixes.</li>
+    </ul>
+  </li>
 </ul>
 
 <h2>Introduction.</h2>
