@@ -14,10 +14,10 @@ ins { background-color:LightGreen; }
 <font size=-1>
 Jorg Brown &lt;jorg.brown@gmail.com&gt;
 <br>
-2019-06-18
+2019-07-19
 <br>
-Document D1714R1
-<code>$Id: proposal.html,v 1.50 2019/06/18 20:07:37 jorg Exp $</code>
+Document P1714R1
+<code>$Id: proposal.html,v 1.50 2019/07/19 02:12:37 jorg Exp $</code>
 </font>
 
 <h1>P1714: NTTP are incomplete without float, double, and long double!
@@ -132,26 +132,26 @@ Portions of the standard which currently prohibit use of floating-point constant
 <p>-- a placeholder for a deduced class type ([dcl.type.class.deduct]).</p>
 </blockquote>
 
-<p>Delete paragraph 7 (which begins with "A non-type template-parameter shall not be declared to..."]</p>
+<p>Delete paragraph 7 (which begins with <del>"A non-type template-parameter shall not be declared to..."</del>]</p>
 
 <p>Modify 13.5 Type equivalence [temp.type] paragraph 1 as follows:</p>
 
 <blockquote>
-<p>Two template-ids refer to the same class, function, or variable if</p>
+<p>Two <i>template-ids</i> refer to the same class, function, or variable if<ins>, after converting each <i>template-argument</i> to match the kind and type of its corresponding <i>template-parameter,</i> if needed,</ins></p>
 
-<p>-- their template-names, operator-function-ids, or literal-operator-ids refer to the same template and</p>
+<p>-- their <i>template-names,</i> <i>operator-function-ids,</i> or <i>literal-operator-ids</i> refer to the same template and</p>
 
-<p>-- their corresponding type template-arguments are the same type and</p>
+<p>-- their corresponding type <del><i>template-arguments</i></del><ins>template arguments</ins> are the same type and</p>
 
-<p>-- their corresponding non-type template-arguments of pointer-to-member type refer to the same class member or are both the null member pointer value and</p>
+<p>-- their corresponding non-type <del><i>template-arguments</i></del><ins>template arguments</ins> of pointer-to-member type refer to the same class member or are both the null member pointer value and</p>
 
-<p>-- their corresponding non-type template-arguments of reference type refer to the same object or function and</p>
+<p>-- their corresponding non-type <del><i>template-arguments</i></del><ins>template arguments</ins> of reference type refer to the same object or function and</p>
 
-<p><ins>-- their corresponding non-type template-arguments of floating-point type have identical value representations and</ins></p>
+<p><ins>-- their corresponding non-type template arguments of floating-point type have identical value representations and</ins></p>
 
-<p>-- their remaining corresponding non-type template-arguments have the same type and value after conversion to the type of the template-parameter, where they are considered to have the same value if they compare equal with the == operator ([expr.eq]), and</p>
+<p>-- their remaining corresponding non-type <del><i>template-arguments</i></del><ins>template arguments</ins> have the same type and <del>value after conversion to the type of the <i>template-parameter,</i> where they are considered to have the same value if they</del> compare equal with the == operator ([expr.eq]), and</p>
 
-<p>-- their corresponding template template-arguments refer to the same template.</p>
+<p>-- their corresponding template <i>template-arguments</i> refer to the same template.</p>
 </blockquote>
 
 <p>I propose to update the existing feature test macro, __cpp_nontype_template_parameter_class, for this feature.</p>
