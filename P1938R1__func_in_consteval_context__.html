@@ -526,12 +526,14 @@ code.diff span.st { color: #000000; background-color: var(--diff-del); }
 <body>
 <div class="wrapper">
 <header id="title-block-header">
+<h1 class="title" style="text-align:center">This is not P1938R1; there is no P1938R1 yet.</h1>
 <h1 class="title" style="text-align:center"><code class="sourceCode cpp"><span class="cf">__func_in_consteval_context__</span></code></h1>
+<h1 class="title" style="text-align:center">This is not P1938R1; there is no P1938R1 yet.</h1>
 
 <table style="border:none;float:right">
   <tr>
     <td>Document #: </td>
-    <td>P1938R1</td>
+    <td>X1938X1</td>
   </tr>
   <tr>
     <td>Date: </td>
@@ -570,6 +572,7 @@ code.diff span.st { color: #000000; background-color: var(--diff-del); }
 </ul>
 </div>
 <h1 id="introduction" style="border-bottom:1px solid #cccccc"><span class="header-section-number">1</span> Introduction<a href="#introduction" class="self-link"></a></h1>
+<h1 class="title" style="text-align:center">This is not P1938R1; this is a suggestion for a change to P1938, in a form that resembles a paper.</h1>
 <p>Despite this paper missing both our respective NB comment deadlines and the mailing deadline, we still believe it provides a significant enough improvement to the status quo that it should be considered for C++20.</p>
 <p>C++20 will have several new features to aid programmers in writing code during constant evaluation. Two of these are <code class="sourceCode cpp">std<span class="op">::</span>is_constant_evaluated<span class="op">()</span></code> <span class="citation" data-cites="P0595R2">[<a href="#ref-P0595R2" role="doc-biblioref">P0595R2</a>]</span> and <code class="sourceCode cpp"><span class="kw">consteval</span></code> <span class="citation" data-cites="P1073R3">[<a href="#ref-P1073R3" role="doc-biblioref">P1073R3</a>]</span>, both adopted in San Diego 2018. <code class="sourceCode cpp"><span class="kw">consteval</span></code> is for functions that can only be invoked during constant evaluation. <code class="sourceCode cpp">is_constant_evaluated<span class="op">()</span></code> is a magic library function to check if the current evaluation is constant evaluation to provide, for instance, a valid implementation of an algorithm for constant evaluation time and a better implementation for runtime.</p>
 <p>However, despite being adopted at the same meeting, these features interact poorly with each other and have other issues that make them ripe for confusion.</p>
